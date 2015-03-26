@@ -5,9 +5,13 @@
 package core;
 import gui.DTNSimGUI;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
+import javax.swing.JOptionPane;
 
 import ui.DTNSimTextUI;
 
@@ -49,6 +53,37 @@ public class DTNSim {
 		/* set US locale to parse decimals in consistent way */
 		java.util.Locale.setDefault(java.util.Locale.US);
 		
+		/*use an external file SettingsList to store the parameters of each simulations */
+		File settingfile = new File("SettingsList");
+		if (settingfile.exists()) {
+			ArrayList<String> settinglist = new ArrayList<String>();
+			try {
+				Scanner sc = new Scanner(settingfile);
+				while (sc.hasNextLine()) {
+					settinglist.add(sc.nextLine());
+				}
+				sc.close();
+				
+				String[] simulationParameters = new String[settinglist.size()];
+				for (int i = 0; i < settinglist.size(); i++) {
+					simulationParameters[i] = settinglist.get(i);
+				}
+
+				String selectedSimulationParameter = (String) JOptionPane.showInputDialog(null,
+						"Choose settings", "Settings Dialog",
+						JOptionPane.PLAIN_MESSAGE, null, simulationParameters,
+						simulationParameters[0]);
+				if (selectedSimulationParameter != null) {
+					args = selectedSimulationParameter.split(" ");
+				}
+			} catch (FileNotFoundException e1) {
+				System.out.println("Can't find SettingsList");
+				e1.printStackTrace();
+			}
+
+
+		}
+	
 		if (args.length > 0) {
 			if (args[0].equals(BATCH_MODE_FLAG)) {
 				batchMode = true;

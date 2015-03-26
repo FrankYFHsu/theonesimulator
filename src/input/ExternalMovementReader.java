@@ -4,11 +4,14 @@
  */
 package input;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
+
 
 import core.Coord;
 import core.SettingsError;
@@ -37,8 +40,8 @@ import core.Tuple;
  */
 public class ExternalMovementReader {
 	/* Prefix for comment lines (lines starting with this are ignored) */
-	public static final String COMMENT_PREFIX = "#";
-	private Scanner scanner;
+	public static final String COMMENT_PREFIX = "#";	
+	private BufferedReader br;
 	private double lastTimeStamp = -1;
 	private String lastLine;
 	private double minTime;
@@ -48,6 +51,7 @@ public class ExternalMovementReader {
 	private double minY;
 	private double maxY;
 	private boolean normalize;
+	public static final int DEFAULT_READLIMIT=8192;
 
 		
 	/**
@@ -59,27 +63,30 @@ public class ExternalMovementReader {
 		this.normalize = true;
 		File inFile = new File(inFilePath);
 		try {
-			scanner = new Scanner(inFile);
+			br = new BufferedReader(new FileReader(inFile));
 		} catch (FileNotFoundException e) {
-			throw new SettingsError("Couldn't find external movement input " +
-					"file " + inFile);
+			throw new SettingsError("Couldn't find external movement input "
+					+ "file " + inFile);
 		}
-		
-		String offsets = scanner.nextLine();
 	
+
+		String offsets = null;
 		try {
-			Scanner lineScan = new Scanner(offsets);
-			minTime = lineScan.nextDouble();
-			maxTime = lineScan.nextDouble();
-			minX = lineScan.nextDouble();
-			maxX = lineScan.nextDouble();
-			minY = lineScan.nextDouble();
-			maxY = lineScan.nextDouble();
+
+			offsets = br.readLine();		
+			String tokens[] = offsets.split(" "); 
+			
+			minTime = Double.parseDouble(tokens[0]);
+			maxTime = Double.parseDouble(tokens[1]);
+			minX = Double.parseDouble(tokens[2]);
+			maxX = Double.parseDouble(tokens[3]);
+			minY = Double.parseDouble(tokens[4]);
+			maxY = Double.parseDouble(tokens[5]);
+			lastLine = br.readLine();
 		} catch (Exception e) {
 			throw new SettingsError("Invalid offset line '" + offsets + "'");
 		}
-		
-		lastLine = scanner.nextLine();
+
 	}
 	
 	/**
@@ -101,57 +108,108 @@ public class ExternalMovementReader {
 		ArrayList<Tuple<String, Coord>> moves = 
 			new ArrayList<Tuple<String, Coord>>();
 		
-		if (!scanner.hasNextLine()) {
-			return moves;
-		}
-		
-		Scanner lineScan = new Scanner(lastLine);
-		double time = lineScan.nextDouble();
-		String id = lineScan.next();
-		double x = lineScan.nextDouble();
-		double y = lineScan.nextDouble();
-		
-		if (normalize) {
-			time -= minTime;
-			x -= minX;
-			y -= minY;
-		}
-		
-		lastTimeStamp = time;
-		
-		while (scanner.hasNextLine() && lastTimeStamp == time) {
-			lastLine = scanner.nextLine();
-			
-			if (lastLine.trim().length() == 0 || 
-					lastLine.startsWith(COMMENT_PREFIX)) {
-				continue; /* skip empty and comment lines */
-			}
-						
-			// add previous line's tuple
-			moves.add(new Tuple<String, Coord>(id, new Coord(x,y)));		
+		try {
 
-			lineScan = new Scanner(lastLine);
-			
-			try {
-				time = lineScan.nextDouble();
-				id = lineScan.next();
-				x = lineScan.nextDouble();
-				y = lineScan.nextDouble();
-			} catch (Exception e) {
-				throw new SettingsError("Invalid line '" + lastLine + "'");
+			br.mark(DEFAULT_READLIMIT);
+			if ((br.readLine()) != null) {
+				br.reset();
+			} else {
+				br.reset();
+				return moves;
 			}
-			
+
+
+			lastLine = lastLine.replace("  ", " ");
+			String[] tokens = lastLine.split(" ");
+			double time = Double.parseDouble(tokens[0]);
+			String id = tokens[1];
+			double x = Double.parseDouble(tokens[2]);
+			double y = Double.parseDouble(tokens[3]);
+
 			if (normalize) {
 				time -= minTime;
 				x -= minX;
 				y -= minY;
 			}
+
+			lastTimeStamp = time;
+
+			br.mark(8192);
+			if ((br.readLine()) != null) {
+				br.reset();
+			} else {
+				br.reset();
+				return moves;
+			}
+
+			// while (scanner.hasNextLine() && lastTimeStamp == time) {
+			while (lastTimeStamp == time) {
+				br.mark(DEFAULT_READLIMIT);
+				if ((br.readLine()) != null) {
+					br.reset();
+				} else {
+					br.reset();
+					break;
+				}
+
+				lastLine = br.readLine();
+			
+
+				if (lastLine.trim().length() == 0
+						|| lastLine.startsWith(COMMENT_PREFIX)) {
+
+					continue; /* skip empty and comment lines */
+				}
+
+				// add previous line's tuple
+			
+				moves.add(new Tuple<String, Coord>(id, new Coord(x, y)));
+
+				lastLine = lastLine.replace("  ", " ");
+				tokens = lastLine.split(" ");
+				time = Double.parseDouble(tokens[0]);
+				id = tokens[1];
+				x = Double.parseDouble(tokens[2]);
+				y = Double.parseDouble(tokens[3]);
+
+				// lineScan = new Scanner(lastLine);
+
+				try {
+					time = Double.parseDouble(tokens[0]);
+					id = tokens[1];
+					x = Double.parseDouble(tokens[2]);
+					y = Double.parseDouble(tokens[3]);
+				} catch (Exception e) {
+					System.out.println("nextline = null");
+					throw new SettingsError("Invalid line '" + lastLine + "'");
+
+				}
+
+				if (normalize) {
+					time -= minTime;
+					x -= minX;
+					y -= minY;
+				}
+			}
+
+			// if (!scanner.hasNextLine()) { // add the last tuple of the file
+			// moves.add(new Tuple<String, Coord>(id, new Coord(x,y)));
+			// }
+			
+			br.mark(DEFAULT_READLIMIT);
+			if ((br.readLine()) == null) {
+				br.reset();
+				moves.add(new Tuple<String, Coord>(id, new Coord(x, y)));
+			} else {
+				br.reset();				
+			}
+			
+			
+		} catch (IOException e1) {
+
+			e1.printStackTrace();
 		}
-		
-		if (!scanner.hasNextLine()) {	// add the last tuple of the file
-			moves.add(new Tuple<String, Coord>(id, new Coord(x,y)));
-		}
-		
+
 		return moves;
 	}
 	

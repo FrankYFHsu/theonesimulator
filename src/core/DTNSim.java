@@ -11,6 +11,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+
 import javax.swing.JOptionPane;
 
 import ui.DTNSimTextUI;
@@ -31,6 +32,7 @@ public class DTNSim {
 	/** List of class names that should be reset between batch runs */
 	private static List<Class<?>> resetList = new ArrayList<Class<?>>();
 	
+	
 	/**
 	 * Starts the user interface with given arguments.
 	 * If first argument is {@link #BATCH_MODE_FLAG}, the batch mode and text UI
@@ -44,6 +46,8 @@ public class DTNSim {
 	 * @param args Command line arguments
 	 */
 	public static void main(String[] args) {
+		
+		
 		boolean batchMode = false;
 		int nrofRuns[] = {0,1};
 		String confFiles[];
@@ -257,5 +261,8 @@ public class DTNSim {
 	 */
 	private static void print(String txt) {
 		System.out.println(txt);
+		
+
 	}
+	
 }
